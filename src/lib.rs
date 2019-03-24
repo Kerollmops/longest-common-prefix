@@ -63,6 +63,9 @@ mod bench {
     const STRING_A: &[u8] = b"hello world is a trivial exercise";
     const STRING_B: &[u8] = b"hello world is a trivial example";
 
+    const LITTLE_STRING_A: &[u8] = b"trivial exercise";
+    const LITTLE_STRING_B: &[u8] = b"trivial example";
+
     #[bench]
     fn dumb_version(bench: &mut Bencher) {
         bench.iter(|| {
@@ -78,6 +81,24 @@ mod bench {
             let a = test::black_box(STRING_A);
             let b = test::black_box(STRING_B);
             assert_eq!(longest_prefix(a, b), 27);
+        });
+    }
+
+    #[bench]
+    fn dumb_version_little(bench: &mut Bencher) {
+        bench.iter(|| {
+            let a = test::black_box(LITTLE_STRING_A);
+            let b = test::black_box(LITTLE_STRING_B);
+            assert_eq!(dumb_longest_prefix(a, b), 10);
+        });
+    }
+
+    #[bench]
+    fn simd_version_little(bench: &mut Bencher) {
+        bench.iter(|| {
+            let a = test::black_box(LITTLE_STRING_A);
+            let b = test::black_box(LITTLE_STRING_B);
+            assert_eq!(longest_prefix(a, b), 10);
         });
     }
 }
