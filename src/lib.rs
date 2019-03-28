@@ -21,23 +21,27 @@ pub fn longest_prefix(a: &[u8], b: &[u8]) -> usize {
 
     for (achunk, bchunk) in achunks.zip(bchunks) {
         unsafe {
-            // load the 32 bits into a "bag of bits"
+            // loads the 32 bytes from memory into a "bag of bits"
             let baga = _mm256_loadu_si256(achunk.as_ptr() as *const _);
             let bagb = _mm256_loadu_si256(bchunk.as_ptr() as *const _);
 
-            // compare each byte, -1 if not equal, 0 if equal
+            // compare each byte, 0xFF if equal, 0x00 if not
             let eq256 = _mm256_cmpeq_epi8(baga, bagb);
 
             // retrieve the most significant bit of each byte
+            // this reduces the mm256 into an i32,
+            // inserting a 1 for each 0xFF and a 0 for each 0x00
             let eq = _mm256_movemask_epi8(eq256) as u32;
 
             // reverse and counts the number of trailing least significant zeros
+            // this informs on the biggest number of matching bytes from the start
             let reversed = !eq;
             let first_non_zero = _tzcnt_u32(reversed);
 
             offset += first_non_zero as usize;
 
-            // return if these 32 bytes doesn't match entirely
+            // if these 32 bytes doesn't match entirely,
+            // stop and return the longest offset reached
             if first_non_zero != 32 {
                 return offset
             }
