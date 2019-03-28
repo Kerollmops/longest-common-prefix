@@ -1,7 +1,8 @@
 #![feature(test)]
 
+use std::cmp;
 use core::arch::x86_64::{
-    _mm256_loadu_si256,
+    _mm256_lddqu_si256,
     _mm256_movemask_epi8,
     _mm256_cmpeq_epi8,
     _tzcnt_u32,
@@ -14,16 +15,16 @@ pub fn dumb_longest_prefix(a: &[u8], b: &[u8]) -> usize {
 
 #[inline]
 pub fn longest_prefix(a: &[u8], b: &[u8]) -> usize {
-    let achunks = a.chunks_exact(32);
-    let bchunks = b.chunks_exact(32);
-
+    let iterations = cmp::min(a.len(), b.len()) / 32;
     let mut offset = 0;
 
-    for (achunk, bchunk) in achunks.zip(bchunks) {
+    for i in 0..iterations {
+        let off = i * 32;
+
         unsafe {
             // loads the 32 bytes from memory into a "bag of bits"
-            let baga = _mm256_loadu_si256(achunk.as_ptr() as *const _);
-            let bagb = _mm256_loadu_si256(bchunk.as_ptr() as *const _);
+            let baga = _mm256_lddqu_si256(a.as_ptr().add(off) as *const _);
+            let bagb = _mm256_lddqu_si256(b.as_ptr().add(off) as *const _);
 
             // compare each byte, 0xFF if equal, 0x00 if not
             let eq256 = _mm256_cmpeq_epi8(baga, bagb);
@@ -48,13 +49,12 @@ pub fn longest_prefix(a: &[u8], b: &[u8]) -> usize {
         }
     }
 
-    // if the remaining string is shorter than 32 bytes
-    // therefore we fallback on the dumb version
-    let a = &a[offset..];
-    let b = &b[offset..];
-    let count = dumb_longest_prefix(a, b);
+    unsafe {
+        let a = a.get_unchecked(offset..);
+        let b = b.get_unchecked(offset..);
 
-    count + offset
+        offset + dumb_longest_prefix(a, b)
+    }
 }
 
 #[cfg(test)]
